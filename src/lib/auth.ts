@@ -13,8 +13,8 @@ export function verifyPassword(password: string, hash: string): boolean {
 }
 
 export async function getUserByName(name: string) {
-  const user = await db.select().from(users).where(eq(users.name, name)).limit(1).get();
-  return user || null;
+  const userResult = await db.select().from(users).where(eq(users.name, name)).limit(1);
+  return userResult[0] || null;
 }
 
 export async function createUser(name: string, password: string) {
@@ -27,6 +27,6 @@ export async function createUser(name: string, password: string) {
 }
 
 export async function getUserById(id: number) {
-  const user = await db.select().from(users).where(eq(users.id, id)).limit(1).get();
-  return user || null;
+  const userResult = await db.select().from(users).where(eq(users.id, id)).limit(1);
+  return userResult[0] || null;
 }

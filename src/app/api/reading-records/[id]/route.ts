@@ -24,12 +24,12 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const { rating, review, tags, finishedDate } = body;
 
     // First check if the record exists and belongs to the user
-    const existingRecord = await db
+    const existingRecordResult = await db
       .select()
       .from(readingRecords)
       .where(eq(readingRecords.id, parseInt(id)))
-      .limit(1)
-      .get();
+      .limit(1);
+    const existingRecord = existingRecordResult[0] || null;
 
     if (!existingRecord) {
       return NextResponse.json(
@@ -82,12 +82,12 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     const { id } = await params;
 
     // First check if the record exists and belongs to the user
-    const existingRecord = await db
+    const existingRecordResult = await db
       .select()
       .from(readingRecords)
       .where(eq(readingRecords.id, parseInt(id)))
-      .limit(1)
-      .get();
+      .limit(1);
+    const existingRecord = existingRecordResult[0] || null;
 
     if (!existingRecord) {
       return NextResponse.json(

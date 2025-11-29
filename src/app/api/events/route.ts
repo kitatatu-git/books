@@ -4,7 +4,7 @@ import { events } from '@/db/schema';
 
 export async function GET() {
   try {
-    const allEvents = await db.select().from(events).all();
+    const allEvents = await db.select().from(events);
     return NextResponse.json(allEvents);
   } catch (error) {
     console.error('Failed to fetch events:', error);

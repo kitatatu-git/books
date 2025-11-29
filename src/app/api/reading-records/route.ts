@@ -80,12 +80,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 書籍が既に存在するか確認
-    let book = await db
+    const bookResult = await db
       .select()
       .from(books)
       .where(eq(books.googleBooksId, bookData.googleBooksId))
-      .limit(1)
-      .get();
+      .limit(1);
+    let book = bookResult[0] || null;
 
     // 書籍が存在しない場合は新規作成
     if (!book) {

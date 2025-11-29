@@ -13,10 +13,9 @@ export async function GET(request: NextRequest) {
       records = await db
         .select()
         .from(attendance)
-        .where(eq(attendance.date, date))
-        .all();
+        .where(eq(attendance.date, date));
     } else {
-      records = await db.select().from(attendance).all();
+      records = await db.select().from(attendance);
     }
 
     return NextResponse.json(records);
@@ -46,8 +45,7 @@ export async function POST(request: NextRequest) {
       .select()
       .from(attendance)
       .where(and(eq(attendance.userId, userId), eq(attendance.date, date)))
-      .limit(1)
-      .all();
+      .limit(1);
 
     if (existing.length > 0) {
       // 既存の記録を更新

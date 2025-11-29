@@ -5,7 +5,7 @@ import { hashPassword } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const members = await db.select().from(users).all();
+    const members = await db.select().from(users);
     return NextResponse.json(members);
   } catch (error) {
     console.error('Failed to fetch members:', error);

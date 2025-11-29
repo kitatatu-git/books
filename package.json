@@ -5,18 +5,21 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:firebase": "next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "postinstall": "npm run db:reflect",
-    "db:reflect": "mkdir -p ./storage && drizzle-kit generate && drizzle-kit migrate",
+    "postinstall": "if [ -n \"$POSTGRES_URL\" ] || [ -n \"$DATABASE_URL\" ]; then npm run db:reflect; fi",
+    "db:reflect": "drizzle-kit generate && drizzle-kit migrate",
     "db:seed": "tsx src/db/seed.ts",
-    "db:clean": "rm -rf ./storage"
+    "db:clean": "rm -rf ./storage",
+    "deploy:firebase": "npm run build:firebase && firebase deploy --only hosting",
+    "deploy:vercel": "vercel --prod"
   },
   "dependencies": {
-    "better-sqlite3": "^12.4.6",
+    "@vercel/postgres": "^0.10.0",
     "drizzle-orm": "^0.44.7",
     "lucide-react": "^0.554.0",
     "next": "16.0.4",
@@ -28,7 +31,6 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
