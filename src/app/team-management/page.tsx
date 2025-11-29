@@ -29,9 +29,15 @@ export default function Home() {
     try {
       const res = await fetch('/api/members');
       const data = await res.json();
-      setUsers(data);
+      if (res.ok && Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error('Failed to fetch users:', data);
+        setUsers([]);
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
+      setUsers([]);
     }
   };
 
@@ -40,9 +46,15 @@ export default function Home() {
       const url = date ? `/api/attendance?date=${date}` : '/api/attendance';
       const res = await fetch(url);
       const data = await res.json();
-      setAttendances(data);
+      if (res.ok && Array.isArray(data)) {
+        setAttendances(data);
+      } else {
+        console.error('Failed to fetch attendances:', data);
+        setAttendances([]);
+      }
     } catch (error) {
       console.error('Failed to fetch attendances:', error);
+      setAttendances([]);
     }
   };
 

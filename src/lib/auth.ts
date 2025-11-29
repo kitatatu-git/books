@@ -1,6 +1,4 @@
-import { db } from '@/db/client';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { firestore, Timestamp } from '@/lib/firebase-admin';
 import crypto from 'crypto';
 
 // シンプルなパスワードハッシュ（本番環境ではbcryptなどを使用してください）
@@ -13,20 +11,47 @@ export function verifyPassword(password: string, hash: string): boolean {
 }
 
 export async function getUserByName(name: string) {
-  const userResult = await db.select().from(users).where(eq(users.name, name)).limit(1);
-  return userResult[0] || null;
+  const usersRef = firestore.collection('users');
+  const snapshot = await usersRef.where('name', '==', name).limit(1).get();
+
+  if (snapshot.empty) {
+    return null;
+  }
+
+  const doc = snapshot.docs[0];
+  return {
+    id: doc.id,
+    ...doc.data(),
+  } as { id: string; name: string; password: string; createdAt: Date };
 }
 
 export async function createUser(name: string, password: string) {
   const hashedPassword = hashPassword(password);
-  const result = await db.insert(users).values({
+  const usersRef = firestore.collection('users');
+
+  const docRef = await usersRef.add({
     name,
     password: hashedPassword,
-  }).returning();
-  return result[0];
+    createdAt: Timestamp.now(),
+  });
+
+  const doc = await docRef.get();
+  return {
+    id: doc.id,
+    ...doc.data(),
+  } as { id: string; name: string; password: string; createdAt: Date };
 }
 
-export async function getUserById(id: number) {
-  const userResult = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  return userResult[0] || null;
+export async function getUserById(id: string) {
+  const docRef = firestore.collection('users').doc(id);
+  const doc = await docRef.get();
+
+  if (!doc.exists) {
+    return null;
+  }
+
+  return {
+    id: doc.id,
+    ...doc.data(),
+  } as { id: string; name: string; password: string; createdAt: Date };
 }

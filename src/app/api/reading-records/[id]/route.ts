@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db/client';
-import { readingRecords } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { firestore, FieldValue } from '@/lib/firebase-admin';
 
 type Params = {
   params: Promise<{ id: string }>;
@@ -24,40 +22,40 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const { rating, review, tags, finishedDate } = body;
 
     // First check if the record exists and belongs to the user
-    const existingRecordResult = await db
-      .select()
-      .from(readingRecords)
-      .where(eq(readingRecords.id, parseInt(id)))
-      .limit(1);
-    const existingRecord = existingRecordResult[0] || null;
+    const recordRef = firestore.collection('reading_records').doc(id);
+    const recordDoc = await recordRef.get();
 
-    if (!existingRecord) {
+    if (!recordDoc.exists) {
       return NextResponse.json(
         { error: 'Reading record not found' },
         { status: 404 }
       );
     }
 
-    if (existingRecord.userId !== parseInt(userId)) {
+    const existingRecord = recordDoc.data();
+    if (existingRecord?.userId !== userId) {
       return NextResponse.json(
         { error: 'この記録を更新する権限がありません' },
         { status: 403 }
       );
     }
 
-    const result = await db
-      .update(readingRecords)
-      .set({
-        rating,
-        review: review || null,
-        tags: tags && tags.length > 0 ? JSON.stringify(tags) : null,
-        finishedDate: finishedDate || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(readingRecords.id, parseInt(id)))
-      .returning();
+    // Update the record
+    await recordRef.update({
+      rating,
+      review: review || null,
+      tags: tags && tags.length > 0 ? JSON.stringify(tags) : null,
+      finishedDate: finishedDate || null,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
-    return NextResponse.json(result[0]);
+    const updatedDoc = await recordRef.get();
+    const result = {
+      id: updatedDoc.id,
+      ...updatedDoc.data(),
+    };
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Failed to update reading record:', error);
     return NextResponse.json(
@@ -82,30 +80,26 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     const { id } = await params;
 
     // First check if the record exists and belongs to the user
-    const existingRecordResult = await db
-      .select()
-      .from(readingRecords)
-      .where(eq(readingRecords.id, parseInt(id)))
-      .limit(1);
-    const existingRecord = existingRecordResult[0] || null;
+    const recordRef = firestore.collection('reading_records').doc(id);
+    const recordDoc = await recordRef.get();
 
-    if (!existingRecord) {
+    if (!recordDoc.exists) {
       return NextResponse.json(
         { error: 'Reading record not found' },
         { status: 404 }
       );
     }
 
-    if (existingRecord.userId !== parseInt(userId)) {
+    const existingRecord = recordDoc.data();
+    if (existingRecord?.userId !== userId) {
       return NextResponse.json(
         { error: 'この記録を削除する権限がありません' },
         { status: 403 }
       );
     }
 
-    await db
-      .delete(readingRecords)
-      .where(eq(readingRecords.id, parseInt(id)));
+    // Delete the record
+    await recordRef.delete();
 
     return NextResponse.json({ success: true });
   } catch (error) {

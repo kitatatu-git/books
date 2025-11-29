@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db/client';
-import { attendance } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { firestore, FieldValue, Timestamp } from '@/lib/firebase-admin';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get('date');
 
-    let records;
+    let query = firestore.collection('attendance');
+
     if (date) {
-      records = await db
-        .select()
-        .from(attendance)
-        .where(eq(attendance.date, date));
-    } else {
-      records = await db.select().from(attendance);
+      query = query.where('date', '==', date) as any;
     }
+
+    const snapshot = await query.get();
+    const records = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
     return NextResponse.json(records);
   } catch (error) {
@@ -41,43 +41,48 @@ export async function POST(request: NextRequest) {
     }
 
     // 同じユーザー・日付の記録が既にあるかチェック
-    const existing = await db
-      .select()
-      .from(attendance)
-      .where(and(eq(attendance.userId, userId), eq(attendance.date, date)))
-      .limit(1);
+    const existingSnapshot = await firestore
+      .collection('attendance')
+      .where('userId', '==', userId)
+      .where('date', '==', date)
+      .limit(1)
+      .get();
 
-    if (existing.length > 0) {
+    if (!existingSnapshot.empty) {
       // 既存の記録を更新
-      const result = await db
-        .update(attendance)
-        .set({
-          status,
-          location: location || null,
-          tasks: tasks || null,
-          consultation: consultation || null,
-          updatedAt: new Date(),
-        })
-        .where(eq(attendance.id, existing[0].id))
-        .returning();
-
-      return NextResponse.json(result[0]);
-    }
-
-    // 新規作成
-    const result = await db
-      .insert(attendance)
-      .values({
-        userId,
-        date,
+      const existingDoc = existingSnapshot.docs[0];
+      await existingDoc.ref.update({
         status,
         location: location || null,
         tasks: tasks || null,
         consultation: consultation || null,
-      })
-      .returning();
+        updatedAt: FieldValue.serverTimestamp(),
+      });
 
-    return NextResponse.json(result[0], { status: 201 });
+      const updatedDoc = await existingDoc.ref.get();
+      return NextResponse.json({
+        id: updatedDoc.id,
+        ...updatedDoc.data(),
+      });
+    }
+
+    // 新規作成
+    const docRef = await firestore.collection('attendance').add({
+      userId,
+      date,
+      status,
+      location: location || null,
+      tasks: tasks || null,
+      consultation: consultation || null,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    const doc = await docRef.get();
+    return NextResponse.json(
+      { id: doc.id, ...doc.data() },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Failed to create/update attendance:', error);
     return NextResponse.json(

@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection
+    match /users/{userId} {
+      allow read: if true;  // 全ユーザーの書庫を見られるように
+      allow write: if true;  // Cookie認証を使用しているため、APIルートで認証
+    }
+
+    // Books collection
+    match /books/{bookId} {
+      allow read: if true;
+      allow write: if true;  // Cookie認証を使用しているため、APIルートで認証
+    }
+
+    // Reading records collection
+    match /reading_records/{recordId} {
+      allow read: if true;  // 全ユーザーの記録を見られるように
+      allow write: if true;  // Cookie認証を使用しているため、APIルートで認証
+    }
+
+    // Attendance collection
+    match /attendance/{attendanceId} {
+      allow read: if true;  // 全チームメンバーの出勤状況を見られるように
+      allow write: if true;  // Cookie認証を使用しているため、APIルートで認証
+    }
+  }
+}

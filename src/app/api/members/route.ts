@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db/client';
-import { users } from '@/db/schema';
+import { firestore, Timestamp } from '@/lib/firebase-admin';
 import { hashPassword } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const members = await db.select().from(users);
+    const usersSnapshot = await firestore.collection('users').get();
+    const members = usersSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     return NextResponse.json(members);
   } catch (error) {
     console.error('Failed to fetch members:', error);
@@ -35,11 +38,17 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = hashPassword(password);
-    const result = await db.insert(users).values({
+    const docRef = await firestore.collection('users').add({
       name,
-      password: hashedPassword
-    }).returning();
-    return NextResponse.json(result[0], { status: 201 });
+      password: hashedPassword,
+      createdAt: Timestamp.now(),
+    });
+
+    const doc = await docRef.get();
+    return NextResponse.json(
+      { id: doc.id, ...doc.data() },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Failed to create member:', error);
     return NextResponse.json(

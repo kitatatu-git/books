@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/db/client';
-import { attendance } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { firestore, FieldValue } from '@/lib/firebase-admin';
 
 export async function PATCH(
   request: NextRequest,
@@ -9,37 +7,31 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const attendanceId = parseInt(id);
-
-    if (isNaN(attendanceId)) {
-      return NextResponse.json(
-        { error: 'Invalid attendance ID' },
-        { status: 400 }
-      );
-    }
-
     const { status, location, tasks, consultation } = await request.json();
 
-    const updateData: any = { updatedAt: new Date() };
-    if (status !== undefined) updateData.status = status;
-    if (location !== undefined) updateData.location = location;
-    if (tasks !== undefined) updateData.tasks = tasks;
-    if (consultation !== undefined) updateData.consultation = consultation;
+    const docRef = firestore.collection('attendance').doc(id);
+    const doc = await docRef.get();
 
-    const result = await db
-      .update(attendance)
-      .set(updateData)
-      .where(eq(attendance.id, attendanceId))
-      .returning();
-
-    if (result.length === 0) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Attendance record not found' },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(result[0]);
+    const updateData: any = { updatedAt: FieldValue.serverTimestamp() };
+    if (status !== undefined) updateData.status = status;
+    if (location !== undefined) updateData.location = location;
+    if (tasks !== undefined) updateData.tasks = tasks;
+    if (consultation !== undefined) updateData.consultation = consultation;
+
+    await docRef.update(updateData);
+
+    const updatedDoc = await docRef.get();
+    return NextResponse.json({
+      id: updatedDoc.id,
+      ...updatedDoc.data(),
+    });
   } catch (error) {
     console.error('Failed to update attendance:', error);
     return NextResponse.json(
@@ -55,26 +47,18 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const attendanceId = parseInt(id);
 
-    if (isNaN(attendanceId)) {
-      return NextResponse.json(
-        { error: 'Invalid attendance ID' },
-        { status: 400 }
-      );
-    }
+    const docRef = firestore.collection('attendance').doc(id);
+    const doc = await docRef.get();
 
-    const result = await db
-      .delete(attendance)
-      .where(eq(attendance.id, attendanceId))
-      .returning();
-
-    if (result.length === 0) {
+    if (!doc.exists) {
       return NextResponse.json(
         { error: 'Attendance record not found' },
         { status: 404 }
       );
     }
+
+    await docRef.delete();
 
     return NextResponse.json({ success: true });
   } catch (error) {

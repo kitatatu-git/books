@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       name: user.name,
     });
 
-    response.cookies.set('userId', user.id.toString(), {
+    response.cookies.set('userId', user.id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
