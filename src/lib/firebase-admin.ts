@@ -5,12 +5,25 @@ import * as fs from 'fs';
 
 if (!admin.apps.length) {
   try {
-    // 環境変数またはサービスアカウントキーファイルから初期化
+    // Vercel用：JSON文字列の環境変数から初期化
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_KEY_JSON;
     const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
-    if (serviceAccountPath) {
+    if (serviceAccountJson) {
+      // Vercel本番環境：環境変数からJSON文字列を読み込み
       try {
-        // プロジェクトルートからの絶対パスを解決
+        const serviceAccountKey = JSON.parse(serviceAccountJson);
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccountKey),
+        });
+        console.log('✅ Firebase Admin initialized with service account (from env)');
+      } catch (parseError) {
+        console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY_JSON:', parseError);
+        admin.initializeApp();
+      }
+    } else if (serviceAccountPath) {
+      // ローカル開発環境：ファイルパスから読み込み
+      try {
         const absolutePath = path.resolve(process.cwd(), serviceAccountPath);
 
         if (fs.existsSync(absolutePath)) {
@@ -20,7 +33,7 @@ if (!admin.apps.length) {
           admin.initializeApp({
             credential: admin.credential.cert(serviceAccountKey),
           });
-          console.log('✅ Firebase Admin initialized with service account');
+          console.log('✅ Firebase Admin initialized with service account (from file)');
         } else {
           console.warn(`⚠️ Service account file not found at: ${absolutePath}`);
           console.warn('⚠️ Using default initialization. Firestore operations may fail.');
@@ -32,14 +45,13 @@ if (!admin.apps.length) {
         admin.initializeApp();
       }
     } else {
-      // 開発環境用：秘密鍵がない場合はデフォルト初期化
-      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT_KEY not set, using default initialization');
+      // 環境変数が設定されていない場合
+      console.warn('⚠️ Neither FIREBASE_SERVICE_ACCOUNT_KEY_JSON nor FIREBASE_SERVICE_ACCOUNT_KEY is set');
       console.warn('⚠️ Firestore operations may fail. Please set up Firebase credentials.');
       admin.initializeApp();
     }
   } catch (error) {
     console.error('❌ Firebase initialization error:', error);
-    // エラーでも続行（エラーは後で個別に処理）
     admin.initializeApp();
   }
 }
