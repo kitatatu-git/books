@@ -1,0 +1,43 @@
+# コンテナ起動用composeファイル
+# 起動:
+# docker compose run --rm --service-ports hackathon
+# podman compose run --rm --service-ports hackathon
+
+services:
+  # composeから見える識別子
+  hackathon:   
+    # docker/podman本体から見える識別子
+    container_name: hackathon
+
+    # コンテナイメージ
+    image: node:24-slim
+
+    # 起動時に対話用のシェルを立ち上げて、ターミナルとして扱えるようにする
+    command: bash
+    stdin_open: true
+    tty: true
+
+    # コンテナ内での作業ディレクトリ
+    working_dir: /work
+
+    # ホストからアクセスできるようにポートを公開 (ホスト:コンテナ内)
+    ports:
+      - "3000:3000"
+
+    # ホストとコンテナ間で共有するディレクトリやファイル
+    volumes:
+      # プロジェクトのコードやデータをコンテナ内の /work に見せる
+      - .:/work
+
+      # ツール類のキャッシュをホストと共有し、再実行時も再利用できるようにする
+      - "${HOME}/.cache:${HOME}/.cache"
+
+      # Claude Code の関連ファイル・ディレクトリをコンテナに渡し、使えるようにする
+      - "${HOME}/.local/bin/claude:/usr/local/bin/claude:ro"
+      - "${HOME}/.claude:/root/.claude"
+      - "${HOME}/.claude.json:/root/.claude.json"
+
+    # ツール類が利用するキャッシュディレクトリの場所を明示しておく
+    environment:
+      XDG_CACHE_HOME: "${HOME}/.cache"
+      TERM: xterm-256color  # ターミナルの色を8 → 256色にする
